@@ -23,6 +23,7 @@ import {
   FeaturedBanner,
 } from '../../components/Polls';
 import { PlantDecoration, SmallPlantDecoration } from '../../components/Polls/SVGDecorations';
+import Colors from '../../../constants/Colors';
 
 interface Market {
   id: string;
@@ -242,7 +243,7 @@ const PollsScreen: React.FC = () => {
       {/* Wrapper with overflow hidden to clip the decorations */}
       <View style={styles.headerWrapper}>
         <LinearGradient
-          colors={['#0000', '#0a1913']}
+          colors={['transparent', '#0a1913']}
           style={styles.header}
         >
           {/* Large Plant SVG Decoration */}
@@ -286,7 +287,7 @@ const PollsScreen: React.FC = () => {
             style={[
               StyleSheet.absoluteFill,
               {
-                backgroundColor: '#000',
+                backgroundColor: '#0a1913',
                 opacity: notificationAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: [0, 0.4],
@@ -322,12 +323,12 @@ const PollsScreen: React.FC = () => {
                 style={styles.notificationItem}
                 onPress={() => handleNotificationItemPress(notification)}>
                 <View style={styles.notificationIcon}>
-                  <Ionicons name="notifications" size={16} color="#179E66" />
+                  <Ionicons name="notifications" size={16} color={Colors.status.success} />
                 </View>
                 <Text style={styles.notificationText} numberOfLines={2}>
                   {notification.message}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#666" />
+                <Ionicons name="chevron-forward" size={16} color={Colors.dark.textTertiary} />
               </TouchableOpacity>
             ))}
           </BlurView>
@@ -349,7 +350,7 @@ const PollsScreen: React.FC = () => {
               style={styles.seeAllButton}
               onPress={handleSeeAll}>
               <Text style={styles.seeAllText}>See All</Text>
-              <Ionicons name="chevron-forward" size={16} color="#474747" />
+              <Ionicons name="chevron-forward" size={16} color={Colors.dark.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -438,17 +439,17 @@ const PollsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0a1913',
   },
   headerWrapper: {
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowColor: Colors.shadows.light.medium.shadowColor,
+    shadowOffset: Colors.shadows.light.medium.shadowOffset,
+    shadowOpacity: Colors.shadows.light.medium.shadowOpacity * 1.5,
+    shadowRadius: Colors.shadows.light.medium.shadowRadius * 1.25,
+    elevation: Colors.shadows.light.medium.elevation,
   },
   header: {
     paddingTop: 10,
@@ -465,13 +466,13 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 14,
-    color: '#dfdfdf',
+    color: Colors.dark.textSecondary,
     marginBottom: 4,
   },
   userName: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#dfdfdf',
+    color: Colors.dark.text,
     letterSpacing: -0.5,
   },
   navRight: {
@@ -481,7 +482,7 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 50,
     height: 50,
-    backgroundColor: '#207372',
+    backgroundColor: '#207372', // Custom teal accent
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a1913',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#fff',
+    borderColor: Colors.dark.text,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -514,7 +515,7 @@ const styles = StyleSheet.create({
   trendingTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff4f4',
+    color: Colors.dark.text,
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -523,7 +524,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 12,
-    color: '#dfdfdf',
+    color: Colors.dark.textSecondary,
     textDecorationLine: 'underline',
   },
   notificationDropdownContainer: {
@@ -532,19 +533,19 @@ const styles = StyleSheet.create({
     right: 20,
     borderRadius: 18,
     zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: Colors.shadows.light.large.shadowColor,
+    shadowOffset: Colors.shadows.light.large.shadowOffset,
+    shadowOpacity: Colors.shadows.light.large.shadowOpacity,
+    shadowRadius: Colors.shadows.light.large.shadowRadius,
+    elevation: Colors.shadows.light.large.elevation,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: Colors.opacity.dark[20],
   },
   notificationDropdown: {
     width: 300,
     borderRadius: 18,
     padding: 8,
-    backgroundColor: 'rgba(0, 28, 8, 0.8)',
+    backgroundColor: 'rgba(23, 158, 102, 0.8)', // Dark green with opacity
     overflow: 'hidden',
   },
   notificationItem: {
@@ -567,7 +568,7 @@ const styles = StyleSheet.create({
   notificationText: {
     flex: 1,
     fontSize: 13,
-    color: '#fff',
+    color: Colors.dark.text,
     fontWeight: '500',
   },
   categoryContainer: {
@@ -583,24 +584,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: Colors.opacity.dark[10],
     marginRight: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: Colors.opacity.dark[20],
     overflow: 'hidden',
   },
   categoryChipActive: {
-    backgroundColor: '#179E66',
-    borderColor: '#179E66',
+    backgroundColor: Colors.status.success,
+    borderColor: Colors.status.success,
   },
   categoryChipText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#a0a0a0',
+    color: Colors.dark.textTertiary,
     lineHeight: 16,
   },
   categoryChipTextActive: {
-    color: '#fff',
+    color: Colors.dark.text,
     fontWeight: '600',
   },
 });
