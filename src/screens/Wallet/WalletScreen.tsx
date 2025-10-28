@@ -329,6 +329,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
+    fontFamily: 'AbrilFatface_400Regular',
   },
   scrollContent: {
     paddingTop: 120,
@@ -344,11 +345,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     marginBottom: 8,
+    
   },
   balanceAmount: {
     fontSize: 42,
     fontWeight: '700',
     color: '#fff',
+    fontFamily: 'AbrilFatface_400Regular',
     marginBottom: 24,
   },
   actionButtons: {

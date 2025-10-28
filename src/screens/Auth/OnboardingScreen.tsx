@@ -187,10 +187,10 @@ const styles = StyleSheet.create({
   },
   quote: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#fff',
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontFamily: 'AbrilFatface_400Regular',
     marginBottom: 30,
     paddingHorizontal: 20,
     lineHeight: 32,
@@ -217,7 +217,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   getStartedButton: {
+    width: width * 0.9,
+    height: 64,
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#179E66',
     paddingVertical: 16,
@@ -229,6 +232,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    
   },
   getStartedText: {
     color: '#fff',

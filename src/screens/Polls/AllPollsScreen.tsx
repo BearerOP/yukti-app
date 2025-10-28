@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '400',
     color: '#fff',
-    fontFamily: 'AbrilFatface-Regular',
+    fontFamily: 'AbrilFatface_400Regular',
     letterSpacing: 0.5,
   },
   sortButton: {

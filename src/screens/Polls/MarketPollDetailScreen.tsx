@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
+    fontFamily: 'AbrilFatface_400Regular',
   },
   shareButton: {
     width: 40,
@@ -262,10 +263,11 @@ const styles = StyleSheet.create({
   },
   question: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '400',
     color: '#fff',
     marginBottom: 12,
     lineHeight: 32,
+    fontFamily: 'AbrilFatface_400Regular',
   },
   description: {
     fontSize: 14,

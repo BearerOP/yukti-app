@@ -8,12 +8,18 @@ import { Provider } from 'react-redux';
 import AppNavigator from './src/navigation/AppNavigator';
 import socketService from './src/services/socket';
 import { store } from './src/store/store';
+import { useFonts } from 'expo-font';
+import { AbrilFatface_400Regular } from '@expo-google-fonts/abril-fatface';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 const App = () => {
   const [appIsReady, setAppIsReady] = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    AbrilFatface_400Regular,
+  });
 
   useEffect(() => {
     async function prepare() {
@@ -33,13 +39,13 @@ const App = () => {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (appIsReady) {
+    if (appIsReady && fontsLoaded) {
       // This tells the splash screen to hide immediately
       await SplashScreen.hideAsync();
     }
-  }, [appIsReady]);
+  }, [appIsReady, fontsLoaded]);
 
-  if (!appIsReady) {
+  if (!appIsReady || !fontsLoaded) {
     return null;
   }
 

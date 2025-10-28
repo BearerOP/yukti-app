@@ -471,9 +471,10 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '400',
     color: Colors.dark.text,
     letterSpacing: -0.5,
+    fontFamily: 'AbrilFatface_400Regular',
   },
   navRight: {
     flexDirection: 'row',
@@ -514,8 +515,9 @@ const styles = StyleSheet.create({
   },
   trendingTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '400',
     color: Colors.dark.text,
+    fontFamily: 'AbrilFatface_400Regular',
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -529,8 +531,8 @@ const styles = StyleSheet.create({
   },
   notificationDropdownContainer: {
     position: 'absolute',
-    top: 72,
-    right: 20,
+    top: 124,
+    right: 18,
     borderRadius: 18,
     zIndex: 1000,
     shadowColor: Colors.shadows.light.large.shadowColor,
@@ -545,7 +547,7 @@ const styles = StyleSheet.create({
     width: 300,
     borderRadius: 18,
     padding: 8,
-    backgroundColor: 'rgba(23, 158, 102, 0.8)', // Dark green with opacity
+    backgroundColor: 'rgba(23, 158, 102, 0.3)', // Dark green with opacity
     overflow: 'hidden',
   },
   notificationItem: {

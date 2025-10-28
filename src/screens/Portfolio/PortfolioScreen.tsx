@@ -241,6 +241,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
+    fontFamily: 'AbrilFatface_400Regular',
   },
   scrollContent: {
     paddingTop: 120,
@@ -285,10 +286,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.7)',
     marginBottom: 4,
+    
   },
   returnsValue: {
     fontSize: 24,
     fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'AbrilFatface_400Regular',
   },
   percentageBadge: {
     flexDirection: 'row',

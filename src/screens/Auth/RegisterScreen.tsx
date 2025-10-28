@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
+    fontFamily: 'AbrilFatface_400Regular',
   },
   registerScrollContent: {
     paddingTop: 120,

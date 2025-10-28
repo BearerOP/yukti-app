@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
+    fontFamily: 'AbrilFatface_400Regular',
   },
   profileCard: {
     backgroundColor: '#1A1A1A',
