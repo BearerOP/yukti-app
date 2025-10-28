@@ -7,7 +7,6 @@ import {
   Alert,
   TouchableOpacity,
   Animated,
-  Modal,
   Clipboard,
 } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -273,7 +272,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
-    fontFamily: 'AbrilFatface_400Regular',
   },
   profileCard: {
     backgroundColor: '#1A1A1A',
