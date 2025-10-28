@@ -1,25 +1,30 @@
 {
   "expo": {
-    "name": "OpinionTradingApp",
-    "slug": "OpinionTradingApp",
+    "name": "Yukti",
+    "slug": "yukti",
     "version": "1.0.0",
+    "main": "App.tsx",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "opiniontradingapp",
-    "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/VerticalLogo.svg",
+    "scheme": "yukti",
+    "userInterfaceStyle": "",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "resizeMode": "cover",
+      "backgroundColor": "#064e3b",
+      "dark": {
+        "backgroundColor": "#064e3b"
+      }
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bearer.yukti"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/VerticalLogo.svg",
+        "backgroundColor": "#064e3b"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -27,13 +32,10 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.svg"
     },
     "plugins": [
-      "expo-router"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-web-browser"
+    ]
   }
 }
