@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import { useNavigation } from '@react-navigation/native';
 import MarketCard from '../../components/Polls/MarketCard';
 
 interface Market {
-  
   id: string;
   category: string;
   categoryColor: string;
@@ -22,7 +21,8 @@ interface Market {
   yesPrice: string;
   noPrice: string;
   volume: string;
-
+  volumeNumber?: number;
+  timestamp?: number;
 }
 
 const categories = ['All', 'Crypto', 'Stocks', 'Politics', 'Sports', 'Entertainment'];
@@ -34,6 +34,15 @@ const AllPollsScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<'trending' | 'recent' | 'volume'>('trending');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const sortMenuAnim = useRef(new Animated.Value(0)).current;
+  const [cardAnimations, setCardAnimations] = useState<Record<string, Animated.Value>>({});
+  
+  // Initialize animations for each category chip
+  const [chipAnimations] = useState(() => 
+    categories.reduce((acc, cat) => {
+      acc[cat] = new Animated.Value(cat === 'All' ? 1 : 0);
+      return acc;
+    }, {} as Record<string, Animated.Value>)
+  );
 
   const mockMarkets: Market[] = [
     {
@@ -45,6 +54,8 @@ const AllPollsScreen: React.FC = () => {
       yesPrice: '₹ 0.42',
       noPrice: '₹ 0.58',
       volume: '₹89K',
+      volumeNumber: 89000,
+      timestamp: Date.now() - 1000 * 60 * 30,
     },
     {
       id: '2',
@@ -55,6 +66,8 @@ const AllPollsScreen: React.FC = () => {
       yesPrice: '₹ 0.22',
       noPrice: '₹ 0.68',
       volume: '₹219K',
+      volumeNumber: 219000,
+      timestamp: Date.now() - 1000 * 60 * 60,
     },
     {
       id: '3',
@@ -65,6 +78,8 @@ const AllPollsScreen: React.FC = () => {
       yesPrice: '₹ 0.65',
       noPrice: '₹ 0.35',
       volume: '₹1.2M',
+      volumeNumber: 1200000,
+      timestamp: Date.now() - 1000 * 60 * 15,
     },
     {
       id: '4',
@@ -75,6 +90,8 @@ const AllPollsScreen: React.FC = () => {
       yesPrice: '₹ 0.45',
       noPrice: '₹ 0.55',
       volume: '₹890K',
+      volumeNumber: 890000,
+      timestamp: Date.now() - 1000 * 60 * 45,
     },
     {
       id: '5',
@@ -85,12 +102,61 @@ const AllPollsScreen: React.FC = () => {
       yesPrice: '₹ 0.38',
       noPrice: '₹ 0.62',
       volume: '₹450K',
+      volumeNumber: 450000,
+      timestamp: Date.now() - 1000 * 60 * 20,
     },
   ];
 
   const handleBack = () => {
     navigation.goBack();
   };
+
+  const handleCategorySelect = (category: string) => {
+    if (category === selectedCategory) return;
+    
+    // Animate out the previous selected chip
+    Animated.timing(chipAnimations[selectedCategory], {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+
+    // Animate in the newly selected chip
+    Animated.spring(chipAnimations[category], {
+      toValue: 1,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+
+    setSelectedCategory(category);
+  };
+
+  // Animate cards when filtered markets change
+  useEffect(() => {
+    const filtered = selectedCategory === 'All'
+      ? mockMarkets
+      : mockMarkets.filter(m => m.category === selectedCategory);
+
+    // Reset all card animations to 0
+    const animations: Record<string, Animated.Value> = {};
+    filtered.forEach((market, index) => {
+      animations[market.id] = new Animated.Value(0);
+    });
+    setCardAnimations(animations);
+
+    // Animate cards in with stagger
+    const animationsArray = filtered.map((market, index) => 
+      Animated.timing(animations[market.id], {
+        toValue: 1,
+        duration: 300,
+        delay: index * 80,
+        useNativeDriver: true,
+      })
+    );
+
+    Animated.parallel(animationsArray).start();
+  }, [selectedCategory]);
 
   const handleSortPress = () => {
     if (showSortMenu) {
@@ -188,37 +254,79 @@ const AllPollsScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category} 
-            style={[
-              styles.categoryChip,
-              selectedCategory === category && styles.categoryChipActive,
-            ]}
-            onPress={() => setSelectedCategory(category)}>
-            <Text
+        contentContainerStyle={styles.categoriesContainer}
+        style={styles.categoriesScroll}>
+        {categories.map((category) => {
+          const isSelected = selectedCategory === category;
+          
+          return (
+            <TouchableOpacity
+              key={category}
+              activeOpacity={0.7}
               style={[
-                styles.categoryChipText,
-                selectedCategory === category && styles.categoryChipTextActive,
-              ]}>
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
+                styles.categoryChip,
+                isSelected && styles.categoryChipActive,
+              ]}
+              onPress={() => handleCategorySelect(category)}>
+              <Animated.View
+                style={{
+                  transform: [
+                    {
+                      scale: chipAnimations[category].interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.05],
+                      }),
+                    },
+                  ],
+                }}>
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    isSelected && styles.categoryChipTextActive,
+                  ]}>
+                  {category}
+                </Text>
+              </Animated.View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Markets List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          {filteredMarkets.map((market) => (
-            <TouchableOpacity
-              key={market.id}
-              onPress={() => handleMarketPress(market)}
-              activeOpacity={0.9}>
-              <MarketCard {...market} />
-            </TouchableOpacity>
-          ))}
+          {filteredMarkets.map((market) => {
+            const cardAnim = cardAnimations[market.id];
+            
+            return (
+              <Animated.View
+                key={market.id}
+                style={{
+                  opacity: cardAnim || 0,
+                  marginBottom: 12,
+                  transform: [
+                    {
+                      translateY: cardAnim ? cardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }) : 20,
+                    },
+                    {
+                      scale: cardAnim ? cardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.9, 1],
+                      }) : 0.9,
+                    },
+                  ],
+                }}>
+                <TouchableOpacity
+                  onPress={() => handleMarketPress(market)}
+                  activeOpacity={0.9}>
+                  <MarketCard {...market} />
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -245,9 +353,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '400',
     color: '#fff',
+    fontFamily: 'AbrilFatface-Regular',
+    letterSpacing: 0.5,
   },
   sortButton: {
     width: 36,
@@ -285,33 +395,37 @@ const styles = StyleSheet.create({
   sortMenuTextActive: {
     color: '#179E66',
   },
+  categoriesScroll: {
+    maxHeight: 50,
+  },
   categoriesContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
   categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
   },
   categoryChipActive: {
     backgroundColor: '#179E66',
     borderColor: '#179E66',
   },
   categoryChipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#b0b0b0',
+    color: '#a0a0a0',
+    lineHeight: 16,
   },
   categoryChipTextActive: {
     color: '#fff',
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

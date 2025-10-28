@@ -362,7 +362,8 @@ const styles = StyleSheet.create({
   toggleBackground: {
     position: 'absolute',
     width: '48%',
-    height: 'calc(100% - 8px)',
+    top: 4,
+    bottom: 4,
     backgroundColor: '#179E66',
     borderRadius: 8,
     margin: 4,

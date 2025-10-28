@@ -5,19 +5,20 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   RefreshControl,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { pollsAPI } from '../../services/api';
 import {
   SearchBar,
-  CategoryFilter,
   MarketCard,
   FeaturedBanner,
 } from '../../components/Polls';
@@ -34,13 +35,23 @@ interface Market {
   volume: string;
 }
 
+const categories = ['All', 'Crypto', 'Stocks', 'Politics', 'Sports', 'Entertainment'];
+
 const PollsScreen: React.FC = () => {
   const navigation = useNavigation();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const notificationAnim = useRef(new Animated.Value(0)).current;
+  const [cardAnimations, setCardAnimations] = useState<Record<string, Animated.Value>>({});
+  const [chipAnimations] = useState(() => 
+    categories.reduce((acc, cat) => {
+      acc[cat] = new Animated.Value(cat === 'All' ? 1 : 0);
+      return acc;
+    }, {} as Record<string, Animated.Value>)
+  );
   const user = useSelector((state: RootState) => state.auth.user);
 
   const notifications = [
@@ -86,6 +97,55 @@ const PollsScreen: React.FC = () => {
   useEffect(() => {
     loadMarkets();
   }, []);
+
+  const handleCategorySelect = (category: string) => {
+    if (category === selectedCategory) return;
+    
+    // Animate out the previous selected chip
+    Animated.timing(chipAnimations[selectedCategory], {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+
+    // Animate in the newly selected chip
+    Animated.spring(chipAnimations[category], {
+      toValue: 1,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+
+    setSelectedCategory(category);
+  };
+
+  // Animate cards when filtered markets change
+  useEffect(() => {
+    const filtered = selectedCategory === 'All'
+      ? markets
+      : markets.filter(m => m.category === selectedCategory);
+
+    // Reset all card animations to 0
+    const animations: Record<string, Animated.Value> = {};
+    filtered.forEach((market) => {
+      animations[market.id] = new Animated.Value(0);
+    });
+    setCardAnimations(animations);
+
+    // Animate cards in with stagger
+    const animationsArray = filtered.map((market, index) => 
+      Animated.timing(animations[market.id], {
+        toValue: 1,
+        duration: 300,
+        delay: index * 80,
+        useNativeDriver: true,
+      })
+    );
+
+    if (animationsArray.length > 0) {
+      Animated.parallel(animationsArray).start();
+    }
+  }, [selectedCategory, markets]);
 
   const loadMarkets = async () => {
     try {
@@ -136,6 +196,17 @@ const PollsScreen: React.FC = () => {
     console.log('Navigate to notification:', notification);
   };
 
+  const handleCloseNotifications = () => {
+    if (showNotifications) {
+      setShowNotifications(false);
+      Animated.timing(notificationAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
   const handleProfilePress = () => {
     (navigation as any).navigate('Profile');
   };
@@ -161,6 +232,10 @@ const PollsScreen: React.FC = () => {
     };
     (navigation as any).navigate('MarketPollDetail', { market: featuredMarket });
   };
+
+  const filteredMarkets = selectedCategory === 'All'
+    ? markets
+    : markets.filter(m => m.category === selectedCategory);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -196,23 +271,51 @@ const PollsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Notifications Dropdown */}
-        {showNotifications && (
+        {/* Search Bar */}
+        <SearchBar />
+
+        {/* Featured Banner */}
+        <FeaturedBanner onExplorePress={handleExploreFeatured} />
+        </LinearGradient>
+      </View>
+
+      {/* Notifications Dropdown Backdrop - Outside headerWrapper */}
+      {showNotifications && (
+        <TouchableWithoutFeedback onPress={handleCloseNotifications}>
           <Animated.View
             style={[
-              styles.notificationDropdown,
+              StyleSheet.absoluteFill,
               {
-                opacity: notificationAnim,
-                transform: [
-                  {
-                    translateY: notificationAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-10, 0],
-                    }),
-                  },
-                ],
+                backgroundColor: '#000',
+                opacity: notificationAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.4],
+                }),
+                zIndex: 998,
               },
-            ]}>
+            ]}
+          />
+        </TouchableWithoutFeedback>
+      )}
+
+      {/* Notifications Dropdown - Outside headerWrapper */}
+      {showNotifications && (
+        <Animated.View
+          style={[
+            styles.notificationDropdownContainer,
+            {
+              opacity: notificationAnim,
+              transform: [
+                {
+                  translateY: notificationAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-10, 0],
+                  }),
+                },
+              ],
+            },
+          ]}>
+          <BlurView intensity={80} tint="dark" style={styles.notificationDropdown}>
             {notifications.map((notification) => (
               <TouchableOpacity
                 key={notification.id}
@@ -227,16 +330,9 @@ const PollsScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={16} color="#666" />
               </TouchableOpacity>
             ))}
-          </Animated.View>
-        )}
-
-        {/* Search Bar */}
-        <SearchBar />
-
-        {/* Featured Banner */}
-        <FeaturedBanner onExplorePress={handleExploreFeatured} />
-        </LinearGradient>
-      </View>
+          </BlurView>
+        </Animated.View>
+      )}
 
       {/* Content */}
       <ScrollView
@@ -258,17 +354,81 @@ const PollsScreen: React.FC = () => {
           </View>
 
           {/* Category Filters */}
-          <CategoryFilter />
+          <View style={styles.categoryContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoriesContainer}>
+              {categories.map((category) => {
+                const isSelected = selectedCategory === category;
+                
+                return (
+                  <TouchableOpacity
+                    key={category}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.categoryChip,
+                      isSelected && styles.categoryChipActive,
+                    ]}
+                    onPress={() => handleCategorySelect(category)}>
+                    <Animated.View
+                      style={{
+                        transform: [
+                          {
+                            scale: chipAnimations[category].interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [1, 1.05],
+                            }),
+                          },
+                        ],
+                      }}>
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          isSelected && styles.categoryChipTextActive,
+                        ]}>
+                        {category}
+                      </Text>
+                    </Animated.View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
 
           {/* Markets List */}
-          {markets.map((market) => (
-            <TouchableOpacity
-              key={market.id}
-              onPress={() => handleMarketPress(market)}
-              activeOpacity={0.9}>
-              <MarketCard {...market} />
-            </TouchableOpacity>
-          ))}
+          {filteredMarkets.map((market) => {
+            const cardAnim = cardAnimations[market.id];
+            
+            return (
+              <Animated.View
+                key={market.id}
+                style={{
+                  opacity: cardAnim || 0,
+                  marginBottom: 12,
+                  transform: [
+                    {
+                      translateY: cardAnim ? cardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }) : 20,
+                    },
+                    {
+                      scale: cardAnim ? cardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.9, 1],
+                      }) : 0.9,
+                    },
+                  ],
+                }}>
+                <TouchableOpacity
+                  onPress={() => handleMarketPress(market)}
+                  activeOpacity={0.9}>
+                  <MarketCard {...market} />
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -366,20 +526,26 @@ const styles = StyleSheet.create({
     color: '#dfdfdf',
     textDecorationLine: 'underline',
   },
-  notificationDropdown: {
+  notificationDropdownContainer: {
     position: 'absolute',
-    top: 80,
+    top: 72,
     right: 20,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 8,
-    width: 300,
+    borderRadius: 18,
     zIndex: 1000,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  notificationDropdown: {
+    width: 300,
+    borderRadius: 18,
+    padding: 8,
+    backgroundColor: 'rgba(0, 28, 8, 0.8)',
+    overflow: 'hidden',
   },
   notificationItem: {
     flexDirection: 'row',
@@ -403,6 +569,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#fff',
     fontWeight: '500',
+  },
+  categoryContainer: {
+    marginBottom: 10,
+  },
+  categoriesContainer: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  categoryChipActive: {
+    backgroundColor: '#179E66',
+    borderColor: '#179E66',
+  },
+  categoryChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#a0a0a0',
+    lineHeight: 16,
+  },
+  categoryChipTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 
