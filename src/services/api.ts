@@ -5,8 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Change this to your backend URL
 const API_URL = __DEV__ 
   // ? 'http://localhost:8000/api/v1'  // Development
-  ? 'http://192.168.1.12:8000/api/v1'
-  // ? 'http://172.16.16.77:8000/api/v1'
+  // ? 'http://192.168.1.12:8000/api/v1'
+  ? 'http://172.16.19.135:8000/api/v1'
   : 'https://your-production-api.com/api/v1';  // Production
 
 // For Android emulator, use: http://10.0.2.2:8000/api/v1
@@ -93,7 +93,7 @@ export const authAPI = {
 };
 
 export const pollsAPI = {
-  getAll: (params?: { category?: string; status?: string }) =>
+  getAll: (params?: { category?: string; status?: string; search?: string; limit?: number; offset?: number }) =>
     api.get('/polls', { params }),
 
   getById: (id: string) => api.get(`/polls/${id}`),
@@ -101,6 +101,29 @@ export const pollsAPI = {
   getTrending: () => api.get('/polls/trending'),
 
   getMyBids: () => api.get('/polls/my-bids'),
+
+  // Poll creation and management
+  create: (data: {
+    title: string;
+    description?: string;
+    category: string;
+    endDate: string;
+    imageUrl?: string;
+  }) => api.post('/polls', data),
+
+  getMyPolls: (params?: { status?: string; category?: string }) =>
+    api.get('/polls/my-polls', { params }),
+
+  update: (id: string, data: {
+    title?: string;
+    description?: string;
+    category?: string;
+    endDate?: string;
+    imageUrl?: string;
+    status?: string;
+  }) => api.put(`/polls/${id}`, data),
+
+  delete: (id: string) => api.delete(`/polls/${id}`),
 };
 
 export const bidsAPI = {

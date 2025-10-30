@@ -31,6 +31,49 @@ export interface PollOption {
   totalVolume: number;
 }
 
+// Poll Categories
+export type PollCategory = 'SPORTS' | 'POLITICS' | 'ENTERTAINMENT' | 'TECHNOLOGY' | 'BUSINESS' | 'CRYPTO' | 'OTHER';
+
+// Poll Status
+export type PollStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'SETTLED' | 'CANCELLED';
+
+// My Poll (for created polls)
+export interface MyPoll {
+  id: string;
+  title: string;
+  description?: string;
+  category: PollCategory;
+  imageUrl?: string;
+  status: PollStatus;
+  endDate: string;
+  resultDate?: string;
+  result?: string;
+  totalPool: number;
+  totalVolume: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  options: {
+    id: string;
+    pollId: string;
+    optionText: string;
+    currentOdds: number;
+    totalStaked: number;
+  }[];
+  _count?: {
+    bids: number;
+  };
+}
+
+// Create Poll Request
+export interface CreatePollRequest {
+  title: string;
+  description?: string;
+  category: PollCategory;
+  endDate: string;
+  imageUrl?: string;
+}
+
 // Bid Types
 export interface Bid {
   id: string;

@@ -119,15 +119,15 @@ export default function ProfileScreen() {
           <Text style={styles.userEmail}>{user.email}</Text>
 
           {/* User ID with Copy */}
-          <Animated.View style={{ transform: [{ scale: copyAnim }] }}>
             <TouchableOpacity
               style={styles.userIdContainer}
               onPress={copyUserId}
               activeOpacity={0.7}>
               <Text style={styles.userId}>{user.id.slice(0, 12)}...</Text>
+          <Animated.View style={{ transform: [{ scale: copyAnim }] }}>
               <Icon name="content-copy" size={16} color="#179E66" />
-            </TouchableOpacity>
           </Animated.View>
+            </TouchableOpacity>
         </View>
 
         {/* Wallet Balance */}
@@ -137,7 +137,7 @@ export default function ProfileScreen() {
             <Icon name="wallet" size={20} color="#179E66" />
           </View>
           <Text style={styles.balanceAmount}>
-            ₹{parseFloat(user.walletBalance || '0').toFixed(2)}
+            ₹{parseFloat((user as any).walletBalance || '0').toFixed(2)}
           </Text>
           <TouchableOpacity style={styles.manageWalletButton}>
             <Text style={styles.manageWalletText}>Manage Wallet</Text>
@@ -332,6 +332,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0F0F0F',
     paddingHorizontal: 16,
+    
     paddingVertical: 10,
     borderRadius: 12,
   },
@@ -467,13 +468,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#F44336',
+    borderWidth: 2,
     marginHorizontal: 20,
     marginBottom: 40,
     paddingVertical: 16,
     borderRadius: 16,
+    borderColor: 'rgba(251, 242, 242, 0.60)',
+    backgroundColor: 'linear-gradient(90deg,rgb(99, 22, 22) 14.44%,rgb(180, 24, 24) 118.03%)',
+    boxShadow: '0 8.7px 13px 0 rgba(255, 255, 255, .2) inset, 0 -8.7px 8.7px 0 rgba(83, 27, 27, 0.5) inset,',
   },
   logoutText: {
     color: '#F44336',

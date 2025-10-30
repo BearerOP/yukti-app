@@ -47,7 +47,7 @@ const PollsScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const notificationAnim = useRef(new Animated.Value(0)).current;
   const [cardAnimations, setCardAnimations] = useState<Record<string, Animated.Value>>({});
-  const [chipAnimations] = useState(() => 
+  const [chipAnimations] = useState(() =>
     categories.reduce((acc, cat) => {
       acc[cat] = new Animated.Value(cat === 'All' ? 1 : 0);
       return acc;
@@ -101,7 +101,7 @@ const PollsScreen: React.FC = () => {
 
   const handleCategorySelect = (category: string) => {
     if (category === selectedCategory) return;
-    
+
     // Animate out the previous selected chip
     Animated.timing(chipAnimations[selectedCategory], {
       toValue: 0,
@@ -134,7 +134,7 @@ const PollsScreen: React.FC = () => {
     setCardAnimations(animations);
 
     // Animate cards in with stagger
-    const animationsArray = filtered.map((market, index) => 
+    const animationsArray = filtered.map((market, index) =>
       Animated.timing(animations[market.id], {
         toValue: 1,
         duration: 300,
@@ -243,7 +243,7 @@ const PollsScreen: React.FC = () => {
       {/* Wrapper with overflow hidden to clip the decorations */}
       <View style={styles.headerWrapper}>
         <LinearGradient
-          colors={['transparent', '#0a1913']}
+          colors={[ '#0a1913','transparent']}
           style={styles.header}
         >
           {/* Large Plant SVG Decoration */}
@@ -258,25 +258,25 @@ const PollsScreen: React.FC = () => {
                 {user?.fullName || 'Guest User'}
               </Text>
             </View>
-          <View style={styles.navRight}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={handleNotificationPress}>
-              <Ionicons name="notifications-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={handleProfilePress}>
-              <Ionicons name="person" size={20} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.navRight}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handleNotificationPress}>
+                <Ionicons name="notifications-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.profileButton}
+                onPress={handleProfilePress}>
+                <Ionicons name="person" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Search Bar */}
-        <SearchBar />
+          {/* Search Bar */}
+          <SearchBar />
 
-        {/* Featured Banner */}
-        <FeaturedBanner onExplorePress={handleExploreFeatured} />
+          {/* Featured Banner */}
+          <FeaturedBanner onExplorePress={handleExploreFeatured} />
         </LinearGradient>
       </View>
 
@@ -362,7 +362,7 @@ const PollsScreen: React.FC = () => {
               contentContainerStyle={styles.categoriesContainer}>
               {categories.map((category) => {
                 const isSelected = selectedCategory === category;
-                
+
                 return (
                   <TouchableOpacity
                     key={category}
@@ -400,7 +400,7 @@ const PollsScreen: React.FC = () => {
           {/* Markets List */}
           {filteredMarkets.map((market) => {
             const cardAnim = cardAnimations[market.id];
-            
+
             return (
               <Animated.View
                 key={market.id}
@@ -453,6 +453,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   nav: {
     flexDirection: 'row',

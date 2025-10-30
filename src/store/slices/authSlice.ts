@@ -16,6 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  walletBalance: number;
 }
 
 const initialState: AuthState = {
@@ -24,6 +25,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  walletBalance: 0,
 };
 
 export const loginUser = createAsyncThunk(
@@ -35,19 +37,19 @@ export const loginUser = createAsyncThunk(
       console.log('Login response:', response.data);
       
       // Extract data from the nested structure
-      const { token, refreshToken, user } = response.data.data;
+      const { accessToken, refreshToken, user } = response.data.data;
 
       // Validate that we have the required values
-      if (!token || !refreshToken || !user) {
+      if (!accessToken || !refreshToken || !user) {
         throw new Error('Missing required authentication data');
       }
 
       // Store tokens
-      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('authToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
-      return { token, user };
+      return { token: accessToken, user };
     } catch (error: any) {
       console.log('Login error details:', error);
       console.log('Error response:', error.response);

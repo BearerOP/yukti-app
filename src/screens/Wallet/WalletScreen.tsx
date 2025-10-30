@@ -1,5 +1,5 @@
 // src/screens/Wallet/WalletScreen.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,17 +11,46 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { Text } from 'react-native-paper';
+import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import { SolanaWalletClient } from '@/src/services/solanaWallet';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
+import WalletConnectButton from '@/src/components/Wallet/WalletConnectButton';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/src/store/store';
+import { setSolBalance } from '@/src/store/slices/walletSlice';
+import { mobileWalletAdapter } from '@/src/utils/mobileWalletAdapter';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function WalletScreen() {
+  const dispatch = useDispatch();
+  const wallet = useSelector((state: RootState) => state.wallet);
+
   const [sheetType, setSheetType] = useState<'deposit' | 'withdraw' | null>(null);
   const [amount, setAmount] = useState('');
+  const [destination, setDestination] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const solana = useRef(new SolanaWalletClient('devnet')).current;
+
+  // Try to reconnect on mount
+  useEffect(() => {
+    const tryReconnect = async () => {
+      try {
+        const reconnected = await mobileWalletAdapter.reconnectIfPossible();
+        if (reconnected && wallet.address) {
+          await fetchBalance(wallet.address);
+        }
+      } catch (error) {
+        console.log('Auto-reconnect failed:', error);
+      }
+    };
+    tryReconnect();
+  }, []);
 
   const transactions = [
     {
@@ -69,7 +98,90 @@ export default function WalletScreen() {
     });
   };
 
-  const quickAmounts = [500, 1000, 2500, 5000];
+  const quickAmounts = [0.1, 0.25, 0.5, 1];
+
+  // Fetch balance and update Redux
+  const fetchBalance = useCallback(async (addr: string) => {
+    try {
+      setIsBusy(true);
+      const balanceLamports = await solana.connection.getBalance(new PublicKey(addr));
+      const balanceSOL = balanceLamports / LAMPORTS_PER_SOL;
+
+      // Update Redux store
+      dispatch(setSolBalance(balanceSOL));
+
+      console.log('[Wallet] Balance (SOL):', balanceSOL.toFixed(6));
+      return balanceSOL;
+    } catch (e) {
+      console.warn('Failed to fetch SOL balance', e);
+      throw e;
+    } finally {
+      setIsBusy(false);
+    }
+  }, [solana.connection, dispatch]);
+
+  const onConnected = useCallback(async (addr: string) => {
+    console.log('[Wallet] Connected address:', addr);
+    Alert.alert('Wallet Connected', `Address:\n${addr.slice(0, 8)}...${addr.slice(-8)}`);
+    try {
+      const balance = await fetchBalance(addr);
+      Alert.alert('Wallet Balance', `${balance.toFixed(6)} SOL`);
+    } catch (e) {
+      console.warn('Failed to fetch balance after connection', e);
+    }
+  }, [fetchBalance]);
+
+  const onDisconnected = useCallback(() => {
+    // Redux state is already cleared by mobileWalletAdapter
+    console.log('[Wallet] Disconnected');
+  }, []);
+
+  const refreshBalance = useCallback(async () => {
+    if (!wallet.address) return;
+    try {
+      const balance = await fetchBalance(wallet.address);
+      Alert.alert('Balance Refreshed', `${balance.toFixed(6)} SOL`);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to refresh balance');
+    }
+  }, [wallet.address, fetchBalance]);
+
+  const handleConfirm = useCallback(async () => {
+    if (!sheetType) return;
+    const amt = parseFloat(amount || '0');
+    if (!amt || !wallet.address) return;
+    setIsBusy(true);
+    try {
+      if (sheetType === 'deposit') {
+        // Devnet-only convenience: airdrop
+        const sig = await solana.connection.requestAirdrop(new PublicKey(wallet.address), Math.floor(amt * LAMPORTS_PER_SOL));
+        await solana.connection.confirmTransaction(sig, 'confirmed');
+        console.log('[Wallet] Deposit airdrop signature:', sig);
+        Alert.alert('Deposit Successful', `${amt} SOL added to your wallet`);
+        await refreshBalance();
+      } else {
+        // Withdraw: transfer from connected wallet to destination
+        const dest = (destination || '').trim();
+        if (!dest) throw new Error('Destination address required');
+        const fromPubkey = new PublicKey(wallet.address);
+        const toPubkey = new PublicKey(dest);
+        const recent = await solana.getRecentBlockhash();
+        const tx = new Transaction({ recentBlockhash: recent, feePayer: fromPubkey }).add(
+          SystemProgram.transfer({ fromPubkey, toPubkey, lamports: Math.floor(amt * LAMPORTS_PER_SOL) })
+        );
+        const txSig = await solana.signAndSend(tx);
+        console.log('[Wallet] Withdraw transaction signature:', txSig);
+        Alert.alert('Withdraw Successful', `${amt} SOL sent`);
+        await refreshBalance();
+      }
+      closeSheet();
+    } catch (e) {
+      console.warn('Wallet action failed', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Transaction failed');
+    } finally {
+      setIsBusy(false);
+    }
+  }, [sheetType, amount, wallet.address, destination, solana, refreshBalance]);
 
   return (
     <View style={styles.container}>
@@ -84,20 +196,40 @@ export default function WalletScreen() {
         {/* Balance Card */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Available Balance</Text>
-          <Text style={styles.balanceAmount}>₹12,450.00</Text>
+          <Text style={styles.balanceAmount}>
+            {wallet.solBalance === 0 && !wallet.connected ? '—' : `${wallet.solBalance.toFixed(4)} SOL`}
+          </Text>
+          <View style={styles.walletRow}>
+            <WalletConnectButton onConnected={onConnected} onDisconnected={onDisconnected} />
+            {wallet.address && (
+              <Text style={styles.addressText}>
+                {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
+              </Text>
+            )}
+            {wallet.connected && (
+              <TouchableOpacity style={styles.refreshBtn} onPress={refreshBalance} disabled={isBusy || wallet.isLoading}>
+                <Icon name={isBusy ? 'loading' : 'refresh'} size={18} color="#fff" />
+                <Text style={styles.refreshText}>
+                  {isBusy ? 'Refreshing...' : 'Refresh'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={styles.depositButton}
+              style={[styles.depositButton, (!wallet.connected || isBusy) && styles.disabledButton]}
               onPress={() => openSheet('deposit')}
+              disabled={!wallet.connected || isBusy}
               activeOpacity={0.8}>
               <Icon name="plus" size={20} color="#fff" />
               <Text style={styles.depositButtonText}>Deposit</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.withdrawButton}
+              style={[styles.withdrawButton, (!wallet.connected || isBusy) && styles.disabledButton]}
               onPress={() => openSheet('withdraw')}
+              disabled={!wallet.connected || isBusy}
               activeOpacity={0.8}>
               <Icon name="arrow-up" size={20} color="#179E66" />
               <Text style={styles.withdrawButtonText}>Withdraw</Text>
@@ -172,17 +304,32 @@ export default function WalletScreen() {
 
                 {/* Amount Input */}
                 <View style={styles.amountInputContainer}>
-                  <Text style={styles.currencySymbol}>₹</Text>
+                  <Text style={styles.currencySymbol}>SOL</Text>
                   <TextInput
                     style={styles.amountInput}
                     value={amount}
                     onChangeText={setAmount}
-                    placeholder="0"
+                    placeholder="0.00"
                     placeholderTextColor="#666"
-                    keyboardType="number-pad"
+                    keyboardType="decimal-pad"
                     autoFocus={false}
                   />
                 </View>
+
+                {sheetType === 'withdraw' && (
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.destLabel}>To</Text>
+                    <TextInput
+                      style={styles.amountInput}
+                      value={destination}
+                      onChangeText={setDestination}
+                      placeholder="Destination address"
+                      placeholderTextColor="#666"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                )}
 
                 {/* Quick Amount Buttons */}
                 <View style={styles.quickAmounts}>
@@ -192,17 +339,20 @@ export default function WalletScreen() {
                       style={styles.quickAmountButton}
                       onPress={() => setAmount(amt.toString())}
                       activeOpacity={0.7}>
-                      <Text style={styles.quickAmountText}>₹{amt}</Text>
+                      <Text style={styles.quickAmountText}>{amt} SOL</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
                 {/* Confirm Button */}
                 <TouchableOpacity
-                  style={styles.confirmButton}
-                  activeOpacity={0.8}>
+                  style={[styles.confirmButton, (isBusy || !wallet.connected) && styles.disabledButton]}
+                  activeOpacity={0.8}
+                  onPress={handleConfirm}
+                  disabled={isBusy || !wallet.connected}
+                >
                   <Text style={styles.confirmButtonText}>
-                    {sheetType === 'deposit' ? 'Proceed to Pay' : 'Withdraw'}
+                    {isBusy ? 'Processing...' : (sheetType === 'deposit' ? 'Request Airdrop' : 'Withdraw')}
                   </Text>
                 </TouchableOpacity>
 
@@ -353,6 +503,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'AbrilFatface_400Regular',
     marginBottom: 24,
+  },
+  walletRow: {
+    marginBottom: 16,
+  },
+  addressText: {
+    color: '#fff',
+    marginTop: 8,
+    fontSize: 12,
+  },
+  refreshBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  refreshText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -533,7 +707,7 @@ const styles = StyleSheet.create({
     borderColor: '#2A2A2A',
   },
   currencySymbol: {
-    fontSize: 32,
+    fontSize: 16,
     fontWeight: '700',
     color: '#179E66',
     marginRight: 8,
@@ -575,9 +749,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  destLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#179E66',
+    marginRight: 8,
+  },
   infoText: {
     fontSize: 13,
     color: '#999',
     textAlign: 'center',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });

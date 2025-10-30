@@ -1,12 +1,33 @@
 // src/screens/Portfolio/PortfolioScreen.tsx
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  Animated,
+  Alert,
+} from 'react-native';
 import { Text } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BlurView } from 'expo-blur';
+import CreatePollModal from '../../components/CreatePollModal';
+import { pollsAPI } from '../../services/api';
+import { MyPoll, PollStatus } from '../../types';
+
+type TabType = 'active' | 'completed' | 'mypolls';
 
 export default function PortfolioScreen() {
-  const [selectedTab, setSelectedTab] = useState<'active' | 'completed'>('active');
+  const [selectedTab, setSelectedTab] = useState<TabType>('active');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [myPolls, setMyPolls] = useState<MyPoll[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Animation values
+  const fabScale = useRef(new Animated.Value(1)).current;
+  const pollsOpacity = useRef(new Animated.Value(0)).current;
 
   const portfolioStats = {
     totalInvested: 25000,
@@ -66,6 +87,257 @@ export default function PortfolioScreen() {
     },
   ];
 
+  // Fetch user's created polls
+  const fetchMyPolls = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await pollsAPI.getMyPolls();
+      if (response.data.success) {
+        setMyPolls(response.data.data);
+
+        // Animate polls in
+        Animated.timing(pollsOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      }
+    } catch (error: any) {
+      console.error('Error fetching my polls:', error);
+      if (error.response?.status !== 401) {
+        Alert.alert('Error', 'Failed to load your polls. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedTab === 'mypolls') {
+      fetchMyPolls();
+    }
+  }, [selectedTab]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (selectedTab === 'mypolls') {
+      await fetchMyPolls();
+    }
+    setRefreshing(false);
+  }, [selectedTab, fetchMyPolls]);
+
+  const handleCreatePoll = () => {
+    // Animate FAB press
+    Animated.sequence([
+      Animated.spring(fabScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+      }),
+      Animated.spring(fabScale, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setShowCreateModal(true);
+  };
+
+  const handlePollCreated = () => {
+    fetchMyPolls();
+    setSelectedTab('mypolls');
+  };
+
+  const handleDeletePoll = async (pollId: string) => {
+    Alert.alert(
+      'Delete Poll',
+      'Are you sure you want to delete this poll? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await pollsAPI.delete(pollId);
+              Alert.alert('Success', 'Poll deleted successfully');
+              fetchMyPolls();
+            } catch (error: any) {
+              const errorMessage = error.response?.data?.error?.message || 'Failed to delete poll';
+              Alert.alert('Error', errorMessage);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const getStatusColor = (status: PollStatus) => {
+    switch (status) {
+      case 'ACTIVE':
+        return '#4CAF50';
+      case 'DRAFT':
+        return '#FF9800';
+      case 'CLOSED':
+        return '#9E9E9E';
+      case 'SETTLED':
+        return '#2196F3';
+      case 'CANCELLED':
+        return '#F44336';
+      default:
+        return '#9E9E9E';
+    }
+  };
+
+  const getStatusIcon = (status: PollStatus) => {
+    switch (status) {
+      case 'ACTIVE':
+        return 'play-circle';
+      case 'DRAFT':
+        return 'file-document-edit';
+      case 'CLOSED':
+        return 'lock';
+      case 'SETTLED':
+        return 'check-circle';
+      case 'CANCELLED':
+        return 'close-circle';
+      default:
+        return 'help-circle';
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'SPORTS':
+        return 'soccer';
+      case 'POLITICS':
+        return 'bank';
+      case 'ENTERTAINMENT':
+        return 'movie';
+      case 'TECHNOLOGY':
+        return 'laptop';
+      case 'BUSINESS':
+        return 'briefcase';
+      case 'CRYPTO':
+        return 'bitcoin';
+      default:
+        return 'dots-horizontal';
+    }
+  };
+
+  const renderMyPollsTab = () => {
+    if (loading && myPolls.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Icon name="loading" size={48} color="#666" />
+          <Text style={styles.emptyStateText}>Loading your polls...</Text>
+        </View>
+      );
+    }
+
+    if (myPolls.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Icon name="poll" size={64} color="#666" />
+          <Text style={styles.emptyStateTitle}>No Polls Yet</Text>
+          <Text style={styles.emptyStateText}>
+            Create your first poll and let others trade on your predictions
+          </Text>
+          <TouchableOpacity style={styles.emptyStateButton} onPress={handleCreatePoll}>
+            <Icon name="plus" size={20} color="#fff" />
+            <Text style={styles.emptyStateButtonText}>Create Poll</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <Animated.View style={{ opacity: pollsOpacity }}>
+        {myPolls.map((poll) => (
+          <Animated.View
+            key={poll.id}
+            style={[
+              styles.pollCard,
+              {
+                opacity: pollsOpacity,
+                transform: [
+                  {
+                    translateY: pollsOpacity.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}>
+            <View style={styles.pollHeader}>
+              <View style={styles.pollHeaderLeft}>
+                <Icon
+                  name={getCategoryIcon(poll.category)}
+                  size={16}
+                  color="#179E66"
+                  style={styles.categoryIcon}
+                />
+                <Text style={styles.pollCategory}>{poll.category}</Text>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(poll.status)}20` }]}>
+                <Icon name={getStatusIcon(poll.status)} size={12} color={getStatusColor(poll.status)} />
+                <Text style={[styles.statusText, { color: getStatusColor(poll.status) }]}>
+                  {poll.status}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.pollTitle}>{poll.title}</Text>
+
+            {poll.description && (
+              <Text style={styles.pollDescription} numberOfLines={2}>
+                {poll.description}
+              </Text>
+            )}
+
+            <View style={styles.pollStats}>
+              <View style={styles.pollStat}>
+                <Icon name="clock-outline" size={14} color="#999" />
+                <Text style={styles.pollStatText}>
+                  Ends {new Date(poll.endDate).toLocaleDateString()}
+                </Text>
+              </View>
+              <View style={styles.pollStat}>
+                <Icon name="account-multiple" size={14} color="#999" />
+                <Text style={styles.pollStatText}>{poll._count?.bids || 0} bids</Text>
+              </View>
+              <View style={styles.pollStat}>
+                <Icon name="currency-inr" size={14} color="#999" />
+                <Text style={styles.pollStatText}>
+                  {Number(poll.totalVolume).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.pollOptions}>
+              {poll.options.map((option) => (
+                <View key={option.id} style={styles.optionItem}>
+                  <Text style={styles.optionText}>{option.optionText}</Text>
+                  <Text style={styles.optionOdds}>{(Number(option.currentOdds) * 100).toFixed(0)}%</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.pollActions}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.actionButtonSecondary]}
+                onPress={() => handleDeletePoll(poll.id)}
+                disabled={poll._count?.bids ? poll._count.bids > 0 : false}>
+                <Icon name="delete-outline" size={18} color="#F44336" />
+                <Text style={[styles.actionButtonText, styles.actionButtonTextDanger]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        ))}
+      </Animated.View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Header with Blur */}
@@ -75,7 +347,10 @@ export default function PortfolioScreen() {
         </BlurView>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#179E66" />}>
         {/* Portfolio Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
@@ -97,10 +372,10 @@ export default function PortfolioScreen() {
               </Text>
             </View>
             <View style={styles.percentageBadge}>
-              <Icon 
-                name={portfolioStats.totalReturns >= 0 ? 'trending-up' : 'trending-down'} 
-                size={16} 
-                color={portfolioStats.totalReturns >= 0 ? '#4CAF50' : '#F44336'} 
+              <Icon
+                name={portfolioStats.totalReturns >= 0 ? 'trending-up' : 'trending-down'}
+                size={16}
+                color={portfolioStats.totalReturns >= 0 ? '#4CAF50' : '#F44336'}
               />
               <Text style={[styles.percentageText, { color: portfolioStats.totalReturns >= 0 ? '#4CAF50' : '#F44336' }]}>
                 {((portfolioStats.totalReturns / portfolioStats.totalInvested) * 100).toFixed(1)}%
@@ -132,22 +407,25 @@ export default function PortfolioScreen() {
             style={[styles.tab, selectedTab === 'active' && styles.tabActive]}
             onPress={() => setSelectedTab('active')}
             activeOpacity={0.7}>
-            <Text style={[styles.tabText, selectedTab === 'active' && styles.tabTextActive]}>
-              Active
-            </Text>
+            <Text style={[styles.tabText, selectedTab === 'active' && styles.tabTextActive]}>Active</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
             onPress={() => setSelectedTab('completed')}
             activeOpacity={0.7}>
-            <Text style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
-              Completed
-            </Text>
+            <Text style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>Completed</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, selectedTab === 'mypolls' && styles.tabActive]}
+            onPress={() => setSelectedTab('mypolls')}
+            activeOpacity={0.7}>
+            <Text style={[styles.tabText, selectedTab === 'mypolls' && styles.tabTextActive]}>My Polls</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Positions List */}
+        {/* Positions/Polls List */}
         <View style={styles.positionsContainer}>
           {selectedTab === 'active' ? (
             activePositions.map((position) => (
@@ -173,13 +451,14 @@ export default function PortfolioScreen() {
                   <View style={styles.positionStat}>
                     <Text style={styles.positionStatLabel}>Returns</Text>
                     <Text style={[styles.positionChange, { color: position.change >= 0 ? '#4CAF50' : '#F44336' }]}>
-                      {position.change >= 0 ? '+' : ''}{position.change}%
+                      {position.change >= 0 ? '+' : ''}
+                      {position.change}%
                     </Text>
                   </View>
                 </View>
               </TouchableOpacity>
             ))
-          ) : (
+          ) : selectedTab === 'completed' ? (
             completedPositions.map((position) => (
               <TouchableOpacity key={position.id} style={styles.positionCard} activeOpacity={0.8}>
                 <View style={styles.positionHeader}>
@@ -210,9 +489,27 @@ export default function PortfolioScreen() {
                 </View>
               </TouchableOpacity>
             ))
+          ) : (
+            renderMyPollsTab()
           )}
         </View>
       </ScrollView>
+
+      {/* Floating Action Button - Show only on My Polls tab */}
+      {selectedTab === 'mypolls' && (
+        <Animated.View style={[styles.fabContainer, { transform: [{ scale: fabScale }] }]}>
+          <TouchableOpacity style={styles.fab} onPress={handleCreatePoll} activeOpacity={0.8}>
+            <Icon name="plus" size={28} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {/* Create Poll Modal */}
+      <CreatePollModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handlePollCreated}
+      />
     </View>
   );
 }
@@ -245,7 +542,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 120,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   summaryCard: {
     backgroundColor: '#179E66',
@@ -286,7 +583,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.7)',
     marginBottom: 4,
-    
   },
   returnsValue: {
     fontSize: 24,
@@ -446,5 +742,175 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#fff',
+  },
+  // My Polls Tab Styles
+  pollCard: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  pollHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pollHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryIcon: {
+    marginRight: 6,
+  },
+  pollCategory: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#179E66',
+    textTransform: 'uppercase',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  pollTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  pollDescription: {
+    fontSize: 13,
+    color: '#999',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  pollStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  pollStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pollStatText: {
+    fontSize: 12,
+    color: '#999',
+  },
+  pollOptions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  optionItem: {
+    flex: 1,
+    backgroundColor: '#0F0F0F',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
+  optionText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  optionOdds: {
+    fontSize: 14,
+    color: '#179E66',
+    fontWeight: '700',
+  },
+  pollActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  actionButtonSecondary: {
+    backgroundColor: '#F4433610',
+    borderWidth: 1,
+    borderColor: '#F44336',
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionButtonTextDanger: {
+    color: '#F44336',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#179E66',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyStateButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    zIndex: 100,
+  },
+  fab: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#179E66',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });

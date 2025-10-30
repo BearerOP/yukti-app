@@ -1,4 +1,6 @@
 // App.tsx
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
@@ -11,8 +13,6 @@ import { store } from './src/store/store';
 import { useFonts } from 'expo-font';
 import { AbrilFatface_400Regular } from '@expo-google-fonts/abril-fatface';
 
-// Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync();
 
 const App = () => {
   const [appIsReady, setAppIsReady] = useState(false);
@@ -44,6 +44,14 @@ const App = () => {
       await SplashScreen.hideAsync();
     }
   }, [appIsReady, fontsLoaded]);
+
+  // Fallback: ensure splash is hidden even if onReady never fires (e.g., dev client attach issues)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   if (!appIsReady || !fontsLoaded) {
     return null;
